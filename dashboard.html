@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendSense AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 text-slate-800 font-sans">
+
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+            <div class="bg-indigo-600 text-white p-2 rounded"><i class="fa-solid fa-layer-group"></i></div>
+            <span class="font-bold text-xl">Trend<span class="text-indigo-600">Sense</span></span>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- SECTION 1: VIRAL NOW -->
+        <div class="mb-10">
+            <h2 class="text-lg font-black text-slate-900 uppercase tracking-wide mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-fire text-rose-500"></i> Viral Opportunities
+            </h2>
+            <div id="hot-trends-container" class="grid grid-cols-1 md:grid-cols-4 gap-4"></div>
+        </div>
+
+        <!-- SECTION 2: DEEP DIVE -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div class="mb-6 border-b border-gray-100 pb-4">
+                <h2 class="text-2xl font-bold text-slate-900">Deep Dive Analytics</h2>
+                <p class="text-slate-500 text-sm">Filter by product category to unlock granular style insights.</p>
+            </div>
+            
+            <!-- SMART FILTERS -->
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 bg-gray-50 p-4 rounded-xl">
+                <!-- Basic Filters -->
+                <select id="f-region" class="p-2 border rounded text-sm font-medium"><option value="All">All Regions</option><option value="Europe">Europe</option><option value="North America">North America</option><option value="Asia">Asia</option></select>
+                <select id="f-season" class="p-2 border rounded text-sm font-medium"><option value="All">All Seasons</option><option value="SS26">SS26 (Spring/Summer)</option><option value="FW26">FW26 (Fall/Winter)</option></select>
+                <select id="f-gender" class="p-2 border rounded text-sm font-medium"><option value="All">All Genders</option><option value="FEMALE">Female</option><option value="MALE">Male</option></select>
+                
+                <!-- Dynamic Product Filters -->
+                <select id="f-category" onchange="updateSubCats()" class="p-2 border border-indigo-200 bg-indigo-50 text-indigo-900 rounded text-sm font-bold">
+                    <option value="All">All Categories</option>
+                    <!-- Populated by JS -->
+                </select>
+                <select id="f-subcat" class="p-2 border border-indigo-200 bg-indigo-50 text-indigo-900 rounded text-sm font-bold">
+                    <option value="All">All Products</option>
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            
+            <button onclick="runAnalysis()" class="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition mb-8 shadow-lg">
+                <i class="fa-solid fa-filter mr-2"></i> Run Deep Analysis
+            </button>
+
+            <!-- INSIGHTS BAR -->
+            <div class="grid grid-cols-3 gap-4 mb-8">
+                <div class="p-4 bg-rose-50 rounded-lg border border-rose-100">
+                    <p class="text-[10px] font-bold text-rose-400 uppercase">Top Colors</p>
+                    <p id="ins-color" class="text-lg font-bold text-rose-900">-</p>
+                </div>
+                <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                    <p class="text-[10px] font-bold text-emerald-400 uppercase">Top Fabrics</p>
+                    <p id="ins-fabric" class="text-lg font-bold text-emerald-900">-</p>
+                </div>
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase">Top Styles</p>
+                    <p id="ins-style" class="text-lg font-bold text-blue-900">-</p>
+                </div>
+            </div>
+
+            <!-- CHARTS -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div>
+                    <h3 id="chartA-title" class="text-sm font-bold text-slate-400 uppercase mb-4">Velocity Leaderboard</h3>
+                    <canvas id="chartA"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">12-Month Demand Forecast</h3>
+                    <canvas id="chartB"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API = "http://127.0.0.1:5001/api";
+        let taxonomy = {};
+        let chartA = null, chartB = null;
+
+        // 1. INIT: Fetch Taxonomy & Hot Trends
+        async function init() {
+            // Fetch Taxonomy
+            const res = await fetch(`${API}/taxonomy`);
+            taxonomy = await res.json();
+            
+            const catSelect = document.getElementById('f-category');
+            Object.keys(taxonomy).forEach(cat => {
+                catSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+
+            // Fetch Hot Trends
+            const hotRes = await fetch(`${API}/hot_trends`);
+            const hotData = await hotRes.json();
+            const container = document.getElementById('hot-trends-container');
+            
+            hotData.forEach((item, idx) => {
+                const colors = idx === 0 ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-800';
+                container.innerHTML += `
+                    <div class="${colors} p-4 rounded-xl shadow-sm">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] uppercase font-bold opacity-70">#${idx+1} Trending</span>
+                            <span class="text-xs font-bold">${item.score} Velocity</span>
+                        </div>
+                        <h4 class="font-black text-lg leading-tight mb-1">${item.name}</h4>
+                        <p class="text-xs opacity-60">${item.tags.join(', ')}</p>
+                    </div>
+                `;
+            });
+
+            runAnalysis();
+        }
+
+        // 2. DYNAMIC DROPDOWNS
+        function updateSubCats() {
+            const cat = document.getElementById('f-category').value;
+            const subSelect = document.getElementById('f-subcat');
+            subSelect.innerHTML = '<option value="All">All Products</option>';
+            
+            if(cat !== 'All' && taxonomy[cat]) {
+                taxonomy[cat].forEach(sub => {
+                    subSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+                });
+            }
+        }
+
+        // 3. ANALYSIS
+        async function runAnalysis() {
+            const payload = {
+                region: document.getElementById('f-region').value,
+                season: document.getElementById('f-season').value,
+                gender: document.getElementById('f-gender').value,
+                category: document.getElementById('f-category').value,
+                sub_category: document.getElementById('f-subcat').value
+            };
+
+            const res = await fetch(`${API}/analyze`, {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if(data.error) { alert("No data found"); return; }
+
+            // Update Insights
+            document.getElementById('ins-color').innerText = data.insights.colors.join(', ');
+            document.getElementById('ins-fabric').innerText = data.insights.fabrics.join(', ');
+            document.getElementById('ins-style').innerText = data.insights.styles.join(', ');
+
+            // Update Charts
+            renderCharts(data);
+        }
+
+        function renderCharts(data) {
+            document.getElementById('chartA-title').innerText = data.chart_velocity.title;
+            
+            const ctxA = document.getElementById('chartA').getContext('2d');
+            if(chartA) chartA.destroy();
+            chartA = new Chart(ctxA, {
+                type: 'bar', indexAxis: 'y',
+                data: {
+                    labels: data.chart_velocity.labels,
+                    datasets: [{
+                        label: 'Velocity Score',
+                        data: data.chart_velocity.scores,
+                        backgroundColor: data.chart_velocity.scores.map(s => s>80 ? '#f43f5e' : '#4f46e5'),
+                        borderRadius: 4
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+
+            const ctxB = document.getElementById('chartB').getContext('2d');
+            if(chartB) chartB.destroy();
+            chartB = new Chart(ctxB, {
+                type: 'line',
+                data: {
+                    labels: data.chart_forecast.labels,
+                    datasets: [{
+                        label: 'Demand',
+                        data: data.chart_forecast.values,
+                        borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>

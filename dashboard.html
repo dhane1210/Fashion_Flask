@@ -31,56 +31,79 @@
         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
             <div class="mb-6 border-b border-gray-100 pb-4">
                 <h2 class="text-2xl font-bold text-slate-900">Deep Dive Analytics</h2>
-                <p class="text-slate-500 text-sm">Filter by product category to unlock granular style insights.</p>
+                <p class="text-slate-500 text-sm">Select demographics to see global rankings. Click charts to drill down.</p>
             </div>
             
-            <!-- SMART FILTERS -->
+            <!-- FILTERS (No Product Filters!) -->
             <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 bg-gray-50 p-4 rounded-xl">
-                <!-- Basic Filters -->
                 <select id="f-region" class="p-2 border rounded text-sm font-medium"><option value="All">All Regions</option><option value="Europe">Europe</option><option value="North America">North America</option><option value="Asia">Asia</option></select>
                 <select id="f-season" class="p-2 border rounded text-sm font-medium"><option value="All">All Seasons</option><option value="SS26">SS26 (Spring/Summer)</option><option value="FW26">FW26 (Fall/Winter)</option></select>
                 <select id="f-gender" class="p-2 border rounded text-sm font-medium"><option value="All">All Genders</option><option value="FEMALE">Female</option><option value="MALE">Male</option></select>
                 
-                <!-- Dynamic Product Filters -->
-                <select id="f-category" onchange="updateSubCats()" class="p-2 border border-indigo-200 bg-indigo-50 text-indigo-900 rounded text-sm font-bold">
-                    <option value="All">All Categories</option>
-                    <!-- Populated by JS -->
+                <!-- NEW: AGE FILTER -->
+                <select id="f-age" class="p-2 border rounded text-sm font-medium">
+                    <option value="All">All Ages</option>
+                    <option value="18-24">18-24</option>
+                    <option value="25-34">25-34</option>
+                    <option value="35-44">35-44</option>
+                    <option value="45-54">45-54</option>
+                    <option value="55+">55+</option>
                 </select>
-                <select id="f-subcat" class="p-2 border border-indigo-200 bg-indigo-50 text-indigo-900 rounded text-sm font-bold">
-                    <option value="All">All Products</option>
-                    <!-- Populated by JS -->
-                </select>
-            </div>
-            
-            <button onclick="runAnalysis()" class="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition mb-8 shadow-lg">
-                <i class="fa-solid fa-filter mr-2"></i> Run Deep Analysis
-            </button>
-
-            <!-- INSIGHTS BAR -->
-            <div class="grid grid-cols-3 gap-4 mb-8">
-                <div class="p-4 bg-rose-50 rounded-lg border border-rose-100">
-                    <p class="text-[10px] font-bold text-rose-400 uppercase">Top Colors</p>
-                    <p id="ins-color" class="text-lg font-bold text-rose-900">-</p>
-                </div>
-                <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
-                    <p class="text-[10px] font-bold text-emerald-400 uppercase">Top Fabrics</p>
-                    <p id="ins-fabric" class="text-lg font-bold text-emerald-900">-</p>
-                </div>
-                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <p class="text-[10px] font-bold text-blue-400 uppercase">Top Styles</p>
-                    <p id="ins-style" class="text-lg font-bold text-blue-900">-</p>
-                </div>
+                
+                <button onclick="runAnalysis(null)" class="bg-slate-900 text-white font-bold py-2 rounded hover:bg-slate-700 transition">
+                    Analyze
+                </button>
             </div>
 
-            <!-- CHARTS -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div>
-                    <h3 id="chartA-title" class="text-sm font-bold text-slate-400 uppercase mb-4">Velocity Leaderboard</h3>
-                    <canvas id="chartA"></canvas>
+            <!-- MAIN LAYOUT -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- LEFT: Velocity Leaderboard (Interactive) -->
+                <div class="lg:col-span-1 border-r border-gray-100 pr-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase">Category Ranking</h3>
+                        <span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded">Click bar to inspect</span>
+                    </div>
+                    <div class="relative h-96 w-full">
+                        <canvas id="chartA"></canvas>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">12-Month Demand Forecast</h3>
-                    <canvas id="chartB"></canvas>
+
+                <!-- RIGHT: Detailed Insights (Updates on Click) -->
+                <div class="lg:col-span-2 pl-2">
+                    <div class="flex items-center gap-3 mb-6 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="bg-white p-2 rounded shadow-sm">
+                            <i class="fa-solid fa-magnifying-glass text-indigo-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Inspecting</p>
+                            <h2 id="focus-title" class="text-xl font-black text-slate-900 leading-none">Loading...</h2>
+                        </div>
+                    </div>
+
+                    <!-- ATTRIBUTE PILLS -->
+                    <div class="grid grid-cols-3 gap-4 mb-8">
+                        <div class="p-4 bg-white rounded-lg border border-slate-100 shadow-sm">
+                            <p class="text-[10px] font-bold text-rose-400 uppercase mb-1">Top Colors</p>
+                            <p id="ins-color" class="text-sm font-bold text-slate-800">-</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-slate-100 shadow-sm">
+                            <p class="text-[10px] font-bold text-emerald-400 uppercase mb-1">Top Fabrics</p>
+                            <p id="ins-fabric" class="text-sm font-bold text-slate-800">-</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-slate-100 shadow-sm">
+                            <p class="text-[10px] font-bold text-blue-400 uppercase mb-1">Top Styles</p>
+                            <p id="ins-style" class="text-sm font-bold text-slate-800">-</p>
+                        </div>
+                    </div>
+
+                    <!-- FORECAST CHART -->
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Demand Forecast</h3>
+                        <div class="relative h-64 w-full">
+                            <canvas id="chartB"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -88,21 +111,11 @@
 
     <script>
         const API = "http://127.0.0.1:5001/api";
-        let taxonomy = {};
         let chartA = null, chartB = null;
 
-        // 1. INIT: Fetch Taxonomy & Hot Trends
+        // 1. INIT
         async function init() {
-            // Fetch Taxonomy
-            const res = await fetch(`${API}/taxonomy`);
-            taxonomy = await res.json();
-            
-            const catSelect = document.getElementById('f-category');
-            Object.keys(taxonomy).forEach(cat => {
-                catSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-            });
-
-            // Fetch Hot Trends
+            // Load Hot Trends
             const hotRes = await fetch(`${API}/hot_trends`);
             const hotData = await hotRes.json();
             const container = document.getElementById('hot-trends-container');
@@ -120,70 +133,75 @@
                     </div>
                 `;
             });
-
-            runAnalysis();
+            // Initial Run
+            runAnalysis(null);
         }
 
-        // 2. DYNAMIC DROPDOWNS
-        function updateSubCats() {
-            const cat = document.getElementById('f-category').value;
-            const subSelect = document.getElementById('f-subcat');
-            subSelect.innerHTML = '<option value="All">All Products</option>';
-            
-            if(cat !== 'All' && taxonomy[cat]) {
-                taxonomy[cat].forEach(sub => {
-                    subSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
-                });
-            }
-        }
-
-        // 3. ANALYSIS
-        async function runAnalysis() {
+        // 2. MAIN ANALYSIS FUNCTION
+        async function runAnalysis(selectedCategory) {
             const payload = {
                 region: document.getElementById('f-region').value,
                 season: document.getElementById('f-season').value,
                 gender: document.getElementById('f-gender').value,
-                category: document.getElementById('f-category').value,
-                sub_category: document.getElementById('f-subcat').value
+                age_group: document.getElementById('f-age').value,
+                selected_category: selectedCategory // Optional drill-down
             };
 
-            const res = await fetch(`${API}/analyze`, {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch(`${API}/analyze`, {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.error) { alert("No data found"); return; }
+                
+                updateUI(data);
+            } catch(e) { console.error(e); }
+        }
 
-            if(data.error) { alert("No data found"); return; }
+        function updateUI(data) {
+            // Update Header
+            document.getElementById('focus-title').innerText = data.selected_focus || "Overview";
 
             // Update Insights
             document.getElementById('ins-color').innerText = data.insights.colors.join(', ');
             document.getElementById('ins-fabric').innerText = data.insights.fabrics.join(', ');
             document.getElementById('ins-style').innerText = data.insights.styles.join(', ');
 
-            // Update Charts
-            renderCharts(data);
-        }
-
-        function renderCharts(data) {
-            document.getElementById('chartA-title').innerText = data.chart_velocity.title;
-            
+            // CHART A: Leaderboard (Horizontal Bar)
             const ctxA = document.getElementById('chartA').getContext('2d');
             if(chartA) chartA.destroy();
+            
             chartA = new Chart(ctxA, {
                 type: 'bar', indexAxis: 'y',
                 data: {
                     labels: data.chart_velocity.labels,
                     datasets: [{
-                        label: 'Velocity Score',
+                        label: 'Velocity',
                         data: data.chart_velocity.scores,
-                        backgroundColor: data.chart_velocity.scores.map(s => s>80 ? '#f43f5e' : '#4f46e5'),
-                        borderRadius: 4
+                        backgroundColor: data.chart_velocity.labels.map(l => l === data.selected_focus ? '#4f46e5' : '#e2e8f0'),
+                        borderRadius: 4,
+                        barThickness: 20
                     }]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { grid: { display: false } } },
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = data.chart_velocity.labels[index];
+                            // Trigger Drill-down
+                            runAnalysis(label);
+                        }
+                    }
+                }
             });
 
+            // CHART B: Forecast (Line)
             const ctxB = document.getElementById('chartB').getContext('2d');
             if(chartB) chartB.destroy();
             chartB = new Chart(ctxB, {
@@ -193,10 +211,10 @@
                     datasets: [{
                         label: 'Demand',
                         data: data.chart_forecast.values,
-                        borderColor: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.1)', fill: true, tension: 0.4
+                        borderColor: '#4f46e5', backgroundColor: 'rgba(79, 70, 229, 0.1)', fill: true, tension: 0.4
                     }]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
         }
 

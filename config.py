@@ -23,7 +23,7 @@ PRODUCT_HIERARCHY = {
 # This dictates how the system finds items in the text
 TAXONOMY = {
     "Clothing": {
-        "keywords": [], 
+        "keywords": [],
         "sub_categories": {
             "T-shirt": ["t-shirt", "tee", "polo", "tshirt"],
             "Shirt": ["shirt", "button-down", "flannel", "blouse", "collar"],

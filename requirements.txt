@@ -1,5 +1,19 @@
-flask
-flask_cors
+# Flask Core
+Flask
+Flask-CORS
+Werkzeug
+
+# Database
+Flask-SQLAlchemy
+SQLAlchemy
+
+# Authentication
+Flask-Bcrypt
+Flask-JWT-Extended
+
+# Data Processing
 pandas
 numpy
-statsmodels
+
+# Development
+python-dotenv

@@ -1,137 +1,200 @@
-import pandas as pd
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 from flask_cors import CORS
-from config import PATHS, PRODUCT_HIERARCHY
+from extensions import db, bcrypt, jwt
+from services import load_data_into_memory
+from config import DevelopmentConfig, ProductionConfig
 import os
 
-app = Flask(__name__)
-CORS(app)
+# Import Blueprints
+from routes.auth import auth_bp
+from routes.admin import admin_bp
+from routes.manager import manager_bp
+from routes.owner import owner_bp
+from routes.dashboard import dashboard_bp
 
-# Load Data
-DF_MAIN = pd.DataFrame()
 
-def load_data():
-    global DF_MAIN
-    if os.path.exists(PATHS['processed_csv']):
-        DF_MAIN = pd.read_csv(PATHS['processed_csv'])
-        DF_MAIN['timestamp'] = pd.to_datetime(DF_MAIN['timestamp'], errors='coerce')
-        DF_MAIN['Signature'] = DF_MAIN['Color'] + " " + DF_MAIN['Style'] + " " + DF_MAIN['Sub_Category']
-        print(f"✅ Loaded {len(DF_MAIN)} rows.")
+def create_app(config_name='development'):
+    app = Flask(__name__)
+
+    # Load configuration
+    if config_name == 'production':
+        app.config.from_object(ProductionConfig)
     else:
-        print("❌ Error: Processed CSV not found.")
+        app.config.from_object(DevelopmentConfig)
 
-load_data()
-
-# --- HELPER: FILTERING LOGIC ---
-def filter_dataframe(filters):
-    df = DF_MAIN.copy()
-    
-    # 1. Region
-    if filters.get('region') and filters['region'] != 'All':
-        col = 'region_clean' if 'region_clean' in df.columns else 'region'
-        df = df[df[col] == filters['region']]
-        
-    # 2. Season
-    if filters.get('season') and filters['season'] != 'All':
-        df = df[df['Season'] == filters['season']]
-        
-    # 3. Gender
-    if filters.get('gender') and filters['gender'] != 'All':
-        df = df[df['gender'].str.upper() == filters['gender'].upper()]
-
-    # 4. Age Group (New)
-    if filters.get('age_group') and filters['age_group'] != 'All':
-        age_map = {
-            "18-24": (18, 24), "25-34": (25, 34),
-            "35-44": (35, 44), "45-54": (45, 54), "55+": (55, 100)
-        }
-        if filters['age_group'] in age_map:
-            min_a, max_a = age_map[filters['age_group']]
-            df = df[(df['age'] >= min_a) & (df['age'] <= max_a)]
-
-    return df
-
-# --- ENDPOINTS ---
-
-@app.route('/', methods=['GET'])
-def home(): return jsonify({"status": "Online"})
-
-@app.route('/api/taxonomy', methods=['GET'])
-def get_taxonomy(): return jsonify(PRODUCT_HIERARCHY)
-
-@app.route('/api/hot_trends', methods=['GET'])
-def get_hot_trends():
-    df = DF_MAIN.copy()
-    trends = df.groupby(['Signature', 'Sub_Category', 'Color', 'Style']).agg({
-        'Velocity_Score': 'mean', 'text_content': 'count'
-    }).reset_index()
-    trends = trends[(trends['Color'] != "Unknown") & (trends['Style'] != "Unknown")]
-    top_trends = trends.sort_values('Velocity_Score', ascending=False).head(4)
-    
-    results = []
-    for _, row in top_trends.iterrows():
-        trend_users = df[df['Signature'] == row['Signature']]
-        reg_col = 'region_clean' if 'region_clean' in df.columns else 'region'
-        top_region = trend_users[reg_col].mode()[0] if reg_col in trend_users else "Global"
-        results.append({
-            "name": row['Signature'], "score": round(row['Velocity_Score'], 1),
-            "volume": int(row['text_content']), "top_region": top_region,
-            "tags": [row['Color'], row['Style']]
-        })
-    return jsonify(results)
-
-@app.route('/api/analyze', methods=['POST'])
-def analyze_trends():
-    filters = request.json or {}
-    df = filter_dataframe(filters)
-    
-    if df.empty: return jsonify({"error": "No data found"}), 200
-
-    # --- 1. OVERVIEW: Show ALL Categories ---
-    # We always group by 'Sub_Category' to show the full leaderboard
-    leaderboard = df.groupby('Sub_Category').agg({
-        'Velocity_Score': 'mean'
-    }).reset_index().sort_values('Velocity_Score', ascending=False)
-
-    chart_a = {
-        "title": "Category Velocity Leaderboard",
-        "labels": leaderboard['Sub_Category'].tolist(),
-        "scores": leaderboard['Velocity_Score'].round(1).tolist()
-    }
-
-    # --- 2. DRILL DOWN LOGIC ---
-    # If the user clicked a specific category, we filter for that to get details.
-    # If not, we pick the #1 top category as default.
-    selected_category = filters.get('selected_category') 
-    if not selected_category or selected_category == "All":
-        selected_category = leaderboard.iloc[0]['Sub_Category'] # Default to winner
-    
-    # Filter dataset specifically for the Insights & Forecast
-    detail_df = df[df['Sub_Category'] == selected_category]
-
-    # Chart B: Forecast for Selected Category
-    try:
-        timeline = detail_df.groupby(detail_df['timestamp'].dt.to_period('M')).size()
-        chart_b = {"labels": timeline.index.astype(str).tolist(), "values": timeline.values.tolist()}
-    except: chart_b = {"labels": [], "values": []}
-
-    # Insights: Attributes for Selected Category
-    def get_top(col):
-        if col not in detail_df.columns: return ["None"]
-        v = detail_df[detail_df[col] != "Unknown"][col].value_counts().head(3).index.tolist()
-        return v if v else ["None"]
-
-    return jsonify({
-        "status": "success",
-        "selected_focus": selected_category, # Tell UI what we are looking at
-        "chart_velocity": chart_a,
-        "chart_forecast": chart_b,
-        "insights": {
-            "colors": get_top('Color'),
-            "fabrics": get_top('Fabric'),
-            "styles": get_top('Style')
+    # Initialize extensions
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Content-Type", "Authorization"]
         }
     })
 
+    db.init_app(app)
+    bcrypt.init_app(app)
+    jwt.init_app(app)
+
+    # Register blueprints
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(manager_bp, url_prefix='/api/manager')
+    app.register_blueprint(owner_bp, url_prefix='/api/owner')
+    app.register_blueprint(dashboard_bp, url_prefix='/api')
+
+    # Root route (health check)
+    @app.route('/', methods=['GET'])
+    def home():
+        return jsonify({
+            "status": "online",
+            "version": "2.0.0",
+            "mode": "production" if config_name == 'production' else "development",
+            "api": {
+                "auth": "/api/auth",
+                "admin": "/api/admin",
+                "manager": "/api/manager",
+                "owner": "/api/owner",
+                "dashboard": "/api"
+            }
+        }), 200
+
+    # API info route
+    @app.route('/api', methods=['GET'])
+    def api_info():
+        return jsonify({
+            "name": "Fashion Trends Analysis API",
+            "version": "2.0.0",
+            "endpoints": {
+                "authentication": {
+                    "register": "POST /api/auth/register",
+                    "login": "POST /api/auth/login",
+                    "validate": "GET /api/auth/validate"
+                },
+                "admin": {
+                    "users": "GET /api/admin/users",
+                    "create_user": "POST /api/admin/users",
+                    "update_user": "PUT /api/admin/users/<id>",
+                    "delete_user": "DELETE /api/admin/users/<id>",
+                    "upload_csv": "POST /api/admin/upload_csv",
+                    "stats": "GET /api/admin/stats"
+                },
+                "manager": {
+                    "generate_prediction": "POST /api/manager/generate_prediction",
+                    "preview_prediction": "POST /api/manager/preview_prediction",
+                    "predictions": "GET /api/manager/predictions",
+                    "stats": "GET /api/manager/stats"
+                },
+                "owner": {
+                    "pending_items": "GET /api/owner/pending_items",
+                    "pending_batches": "GET /api/owner/pending_batches",
+                    "update_status": "POST /api/owner/update_status",
+                    "batch_update": "POST /api/owner/batch_update_status",
+                    "approve_batch": "POST /api/owner/approve_batch/<batch_id>",
+                    "review_history": "GET /api/owner/review_history",
+                    "stats": "GET /api/owner/stats"
+                },
+                "dashboard": {
+                    "taxonomy": "GET /api/taxonomy",
+                    "hot_trends": "GET /api/hot_trends",
+                    "analyze": "POST /api/analyze",
+                    "category_breakdown": "GET /api/category_breakdown",
+                    "search": "GET /api/search",
+                    "available_filters": "GET /api/available_filters"
+                }
+            }
+        }), 200
+
+    # Error handlers
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            "error": "Not Found",
+            "msg": "The requested resource was not found"
+        }), 404
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({
+            "error": "Internal Server Error",
+            "msg": "An internal error occurred. Please try again later."
+        }), 500
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        return jsonify({
+            "error": "Forbidden",
+            "msg": "You don't have permission to access this resource"
+        }), 403
+
+    @app.errorhandler(401)
+    def unauthorized(error):
+        return jsonify({
+            "error": "Unauthorized",
+            "msg": "Authentication required or invalid credentials"
+        }), 401
+
+    # JWT error handlers
+    @jwt.invalid_token_loader
+    def invalid_token_callback(error):
+        return jsonify({
+            "error": "Invalid Token",
+            "msg": "The token is invalid or malformed"
+        }), 401
+
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_data):
+        return jsonify({
+            "error": "Token Expired",
+            "msg": "The token has expired. Please login again."
+        }), 401
+
+    @jwt.unauthorized_loader
+    def missing_token_callback(error):
+        return jsonify({
+            "error": "Missing Token",
+            "msg": "Authorization header is missing"
+        }), 401
+
+    # Initialize database and load data
+    with app.app_context():
+        # Create all tables
+        db.create_all()
+        print("Database tables created")
+        # Load CSV data into memory
+        data_loaded = load_data_into_memory()
+        if data_loaded:
+            print("CSV data loaded into memory")
+        else:
+            print("Warning: CSV data not loaded. Run data_processor.py first.")
+        # Create default admin user if none exists
+        from models import User
+        if not User.query.filter_by(role='admin').first():
+            # DELETE THIS LINE BELOW:
+            # from extensions import bcrypt   <-- CAUSING THE ERROR
+            # The code will now use the global 'bcrypt' imported at the very top
+            default_admin = User(
+                username='admin',
+                password_hash=bcrypt.generate_password_hash('admin123').decode('utf-8'),
+                role='admin'
+            )
+            db.session.add(default_admin)
+            db.session.commit()
+
+    return app
+
+
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    # Determine environment
+    env = os.environ.get('FLASK_ENV', 'development')
+
+    # Create app
+    app = create_app(config_name=env)
+
+    # Run server
+    port = int(os.environ.get('PORT', 5001))
+
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=(env == 'development')
+    )

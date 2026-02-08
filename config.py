@@ -37,7 +37,6 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    # In production, these MUST be set via environment variables
     if Config.SECRET_KEY == 'dev-secret-key-change-in-production':
         raise ValueError("SECRET_KEY must be set in production")
     if Config.JWT_SECRET_KEY == 'jwt-secret-change-in-production':
@@ -53,38 +52,53 @@ PRODUCT_HIERARCHY = {
 }
 
 # --- KEYWORD MAPPING ---
-# This dictates how the system finds items in the text
 TAXONOMY = {
     "Clothing": {
         "keywords": [],
         "sub_categories": {
-            "T-shirt": ["t-shirt", "tee", "polo", "tshirt"],
-            "Shirt": ["shirt", "button-down", "flannel", "blouse", "collar"],
-            "Hoodie": ["hoodie", "sweatshirt", "sweater", "pullover", "jumper"],
-            "Pants": ["pant", "trouser", "chino", "cargo", "jogger", "slacks"],
-            "Jeans": ["jean", "denim", "jeggings"],
-            "Dress": ["dress", "gown", "frock", "skirt", "maxi", "midi", "mini"],
-            "Activewear": ["activewear", "gym", "yoga", "fitness", "legging", "sport bra", "tracksuit"],
-            "Top": ["top", "tank", "camisole", "crop", "bodysuit"]
+            "T-shirt": ["t-shirt", "tee", "polo", "tshirt", "graphic tee", "v-neck", "crew neck"],
+            "Shirt": ["shirt", "button-down", "flannel", "blouse", "collar", "oxford", "linen shirt", "dress shirt"],
+            "Hoodie": ["hoodie", "sweatshirt", "sweater", "pullover", "jumper", "zip-up", "knitwear", "cardigan"],
+            "Pants": ["pant", "trouser", "chino", "cargo", "jogger", "slacks", "sweatpant", "legging", "tights", "bottoms"],
+            "Jeans": ["jean", "denim", "jeggings", "dungarees", "overalls", "ripped jeans", "skinny jeans"],
+            "Dress": ["dress", "gown", "frock", "skirt", "maxi", "midi", "mini", "sundress", "cocktail", "evening wear"],
+            "Activewear": ["activewear", "gym", "yoga", "fitness", "sport bra", "tracksuit", "shorts", "athletic", "performance"],
+            "Top": ["top", "tank", "camisole", "crop", "bodysuit", "tunic", "vest", "bustier"]
         }
     }
 }
 
-# ATTRIBUTES (Specific to Apparel)
+# --- EXPANDED ATTRIBUTES ---
 ATTRIBUTES = {
     "Color": [
-        "Red", "Blue", "Green", "Yellow", "Black", "White", "Pink", "Purple",
-        "Orange", "Grey", "Beige", "Brown", "Navy", "Teal", "Gold", "Silver",
-        "Neon", "Cream", "Khaki", "Burgundy", "Charcoal"
+        # Basic
+        "Red", "Blue", "Green", "Yellow", "Black", "White", "Pink", "Purple", "Orange", "Grey", "Gray", "Brown",
+        # Shades & Nuances
+        "Beige", "Navy", "Teal", "Gold", "Silver", "Neon", "Cream", "Khaki", "Burgundy", "Charcoal",
+        "Olive", "Maroon", "Mustard", "Lavender", "Coral", "Indigo", "Violet", "Cyan", "Magenta", 
+        "Turquoise", "Salmon", "Peach", "Tan", "Ivory", "Mint", "Fuchsia", "Rust", "Mauve", "Lilac",
+        "Crimson", "Emerald", "Sapphire", "Ruby", "Rose"
     ],
     "Fabric": [
-        "Linen", "Denim", "Cotton", "Silk", "Wool", "Leather", "Mesh", "Velvet",
-        "Polyester", "Satin", "Suede", "Chiffon", "Knitted", "Lace", "Cashmere", "Spandex"
+        # Natural
+        "Cotton", "Linen", "Silk", "Wool", "Leather", "Denim", "Canvas", "Hemp", "Bamboo", "Cashmere",
+        # Synthetic / Blends
+        "Polyester", "Nylon", "Spandex", "Rayon", "Viscose", "Acrylic", "Fleece", "Microfiber", "Lycra",
+        # Textures / Weaves
+        "Velvet", "Satin", "Suede", "Chiffon", "Knitted", "Lace", "Mesh", "Corduroy", "Flannel", 
+        "Tweed", "Jersey", "Chambray", "Georgette", "Organza", "Tulle", "Poplin", "Sequin", 
+        "Fur", "Faux Leather", "Sherpa", "Ribbed"
     ],
     "Style": [
-        "Oversized", "Slim", "Combat", "Retro", "Layered", "Cropped", "Fitted",
-        "Vintage", "Boho", "Minimalist", "Streetwear", "Casual", "Formal", "Baggy",
-        "Chic", "Sporty", "Elegant", "Printed", "Striped"
+        # Fits
+        "Oversized", "Slim", "Fitted", "Loose", "Baggy", "Tight", "Flowy", "Tailored", "Relaxed", "Skinny",
+        # Aesthetics
+        "Vintage", "Retro", "Boho", "Bohemian", "Minimalist", "Streetwear", "Casual", "Formal", "Chic", 
+        "Elegant", "Sporty", "Classic", "Modern", "Urban", "Hipster", "Rock", "Edgy", "Punk", "Goth", 
+        "Preppy", "Grunge", "Y2K", "Athleisure", "Business Casual",
+        # Details
+        "Layered", "Cropped", "Combat", "Printed", "Striped", "Floral", "Plaid", "Checkered", 
+        "Pleated", "Ruffled", "Sheer", "Basic", "Statement", "Sustainable", "Embroidered", "Distressed"
     ]
 }
 

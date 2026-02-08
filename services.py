@@ -77,29 +77,44 @@ def analyze_trends_logic(filters):
     if df.empty:
         return None
 
-    # Apply filters
+    # 1. Apply User Filters
     df = filter_dataframe(df, filters)
 
     if df.empty:
         return None
 
-    # Get top 5 trending items by signature frequency
-    top_signatures = df['Signature'].value_counts().head(5).index.tolist()
+    # 2. Find Top 5 Products (Sub_Categories) by Volume
+    # We group by Product Name first, not the full signature
+    top_products = df['Sub_Category'].value_counts().head(5).index.tolist()
 
     results = []
-    for signature in top_signatures:
-        # Get first matching row for attributes
-        row = df[df['Signature'] == signature].iloc[0]
+    for product in top_products:
+        # Get all rows for this specific product (e.g., all "Dresses")
+        product_df = df[df['Sub_Category'] == product]
 
+        # --- SMART ATTRIBUTE FINDER ---
+        # This function finds the most common value that ISN'T "Unknown"
+        def get_best_attribute(column_name):
+            # Filter out unknowns
+            valid_values = product_df[product_df[column_name] != "Unknown"][column_name]
+            
+            if valid_values.empty:
+                return "Various" # Better UI than "Unknown"
+            
+            # Return the most frequent valid value
+            return valid_values.value_counts().idxmax()
+
+        # Build the result
         results.append({
-            "product": row['Sub_Category'],
-            "color": row.get('Color', 'Unknown'),
-            "style": row.get('Style', 'Unknown'),
-            "fabric": row.get('Fabric', 'Unknown'),
-            "velocity_score": round(row.get('Velocity_Score', 0), 1) if 'Velocity_Score' in row else None
+            "product": product,
+            "color": get_best_attribute('Color'),
+            "fabric": get_best_attribute('Fabric'),
+            "style": get_best_attribute('Style'),
+            "velocity_score": round(product_df['Velocity_Score'].mean(), 1)
         })
 
     return results
+
 
 
 def get_data_summary():

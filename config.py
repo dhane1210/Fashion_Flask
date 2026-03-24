@@ -1,9 +1,13 @@
 import os
 from os.path import abspath, dirname, join
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # DIRECTORY CONFIGURATION
 BASE_DIR = dirname(abspath(__file__))
+
+# Load environment variables from .env file
+load_dotenv(join(BASE_DIR, '.env'))
 DATA_DIR = join(BASE_DIR, "data")
 
 # Ensure data directory exists
